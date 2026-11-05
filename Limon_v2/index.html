@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Limon v2</title>
+<style>
+:root{
+  --bg:#fff; --panel:#fffbea; --ink:#2f2a14; --muted:#7a7150;
+  --lemon:#ffe14d; --lemon-dark:#d9b51f; --line:#efe6c2;
+  --green:#4c9a2a; --red:#e2553f;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;overflow:hidden;user-select:none;-webkit-user-select:none}
+
+/* ---------- Limon tarafı ---------- */
+.stage{flex:1 1 55%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;position:relative;min-width:0}
+.bubble{min-height:3.2em;max-width:min(92%,640px);background:#fff8d6;border:2px solid #f0dc8a;border-radius:22px;
+  padding:12px 20px;font-size:clamp(18px,2.6vw,28px);line-height:1.3;text-align:center;font-weight:650;
+  box-shadow:0 6px 18px rgba(120,100,20,.08);opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;position:relative}
+.bubble.show{opacity:1;transform:none}
+.bubble:after{content:"";position:absolute;left:50%;bottom:-12px;width:20px;height:20px;background:#fff8d6;border-right:2px solid #f0dc8a;border-bottom:2px solid #f0dc8a;transform:translateX(-50%) rotate(45deg)}
+.face-wrap{width:min(100%,calc((100vh - 200px) * .96),620px);aspect-ratio:384/400;margin-top:18px;animation:breathe 4.2s ease-in-out infinite;cursor:pointer}
+.face-wrap.talking{animation:bob .5s ease-in-out infinite}
+@keyframes breathe{50%{transform:translateY(-6px) scale(1.01)}}
+@keyframes bob{50%{transform:translateY(-4px) rotate(-1deg)}}
+canvas{width:100%;height:100%;display:block}
+.warn{position:absolute;top:12px;left:12px;right:12px;background:#fff1ee;border:1px solid #f3c2b8;color:#8a2c1b;border-radius:12px;padding:10px 14px;font-size:14px;display:none}
+.warn.show{display:block}
+
+/* ---------- Doktor paneli ---------- */
+.panel{flex:0 0 45%;max-width:560px;background:var(--panel);border-left:2px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.top{padding:12px 14px;border-bottom:2px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.top input{flex:1 1 140px;min-width:0;font:inherit;font-size:18px;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:#fffdf3;color:var(--ink)}
+.top input:focus{outline:none;border-color:var(--lemon-dark)}
+.icon-btn{font:inherit;font-size:15px;font-weight:650;border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.icon-btn:active{transform:scale(.96)}
+.stop{background:var(--red);border-color:var(--red);color:#fff}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 20px}
+h2{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 2px 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.say{font:inherit;font-size:17px;font-weight:650;text-align:left;line-height:1.2;min-height:62px;padding:10px 12px;border-radius:14px;
+  border:2px solid var(--lemon-dark);background:var(--lemon);color:var(--ink);cursor:pointer;display:flex;gap:8px;align-items:center}
+.say .e{font-size:24px;flex:none}
+.say:active{transform:scale(.97);filter:brightness(.95)}
+.say.cat-muayene{background:#fff4b8}
+.say.cat-cesaret{background:#e4f6d6;border-color:#9fcf7f}
+.say.cat-bitis{background:#ffe3d1;border-color:#f0b28c}
+.say.cat-saka{background:#efe6ff;border-color:#c3afee}
+.free{display:flex;gap:8px;margin-top:8px}
+.free input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fffdf3}
+.free button{font:inherit;font-weight:700;font-size:17px;padding:0 18px;border-radius:12px;border:2px solid var(--green);background:var(--green);color:#fff}
+details{margin-top:18px;border:2px solid var(--line);border-radius:14px;padding:10px 14px}
+summary{font-weight:700;cursor:pointer;color:var(--muted)}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px}
+.row label{width:90px;flex:none}
+.row input[type=range]{flex:1}
+.row select{flex:1;font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line)}
+.hint{font-size:13px;color:var(--muted);line-height:1.45;margin-top:10px}
+
+/* Panel gizlenince Limon tüm ekranı kaplar */
+body.hidden-panel .panel{display:none}
+.show-panel{position:fixed;right:12px;bottom:12px;display:none;opacity:.35}
+body.hidden-panel .show-panel{display:block}
+
+/* Dikey tablet: Limon üstte, panel altta */
+@media (orientation:portrait){
+  body{flex-direction:column}
+  .stage{flex:1 1 50%}
+  .face-wrap{width:min(78vw,calc((50vh - 110px) * .96))}
+  .panel{flex:1 1 50%;max-width:none;border-left:none;border-top:2px solid var(--line)}
+}
+</style>
+</head>
+<body>
+
+<section class="stage">
+  <div class="warn" id="warn"></div>
+  <div class="bubble" id="bubble"></div>
+  <div class="face-wrap" id="faceWrap" title="Limon'a dokun!">
+    <canvas id="face" width="384" height="400" aria-label="Limon"></canvas>
+  </div>
+</section>
+
+<aside class="panel">
+  <div class="top">
+    <input id="childName" placeholder="Çocuğun adı (isteğe bağlı)" autocomplete="off" autocapitalize="words">
+    <button class="icon-btn" id="newPatient" title="Adı temizle">🧒 Yeni hasta</button>
+    <button class="icon-btn stop" id="stopBtn">⏹ Sus</button>
+  </div>
+  <div class="scroll" id="scroll">
+    <div id="phrases"></div>
+
+    <h2>✍️ Limon'a söylet</h2>
+    <div class="free">
+      <input id="freeText" placeholder="Bir cümle yaz…" enterkeyhint="send">
+      <button id="freeBtn">Söyle</button>
+    </div>
+
+    <details>
+      <summary>⚙️ Ayarlar</summary>
+      <div class="row"><label for="voice">Ses</label><select id="voice"></select></div>
+      <div class="row"><label for="rate">Hız</label><input type="range" id="rate" min="0.6" max="1.3" step="0.05"></div>
+      <div class="row"><label for="pitch">Ses tonu</label><input type="range" id="pitch" min="0.8" max="2" step="0.05"></div>
+      <div class="row">
+        <button class="icon-btn" id="testVoice">🔊 Sesi dene</button>
+        <button class="icon-btn" id="fullscreen">⛶ Tam ekran</button>
+        <button class="icon-btn" id="hidePanel">🙈 Paneli gizle</button>
+      </div>
+      <p class="hint">Çocuğun adı hiçbir yere kaydedilmez; sayfa kapanınca ya da "Yeni hasta"ya basınca silinir. Mikrofon kullanılmaz.
+      Replikleri değiştirmek için bu dosyanın en üstündeki <b>REPLİKLER</b> listesini düzenleyin.</p>
+    </details>
+  </div>
+</aside>
+<button class="icon-btn show-panel" id="showPanel">☰</button>
+
+<script>
+/* =====================================================================
+   REPLİKLER — Buradan istediğiniz gibi değiştirebilirsiniz.
+   - Her düğmenin birden fazla cümlesi olabilir; Limon her basışta
+     bir öncekinden farklı birini seçer (çocuk aynı cümleyi üst üste duymaz).
+   - {ad} yazan yere çocuğun adı gelir. Ad girilmemişse o kısım atlanır.
+   - son: Limon konuşmayı bitirince hangi yüzle kalsın?
+       "mutlu", "neseli", "goz_kirp" ya da "gulumse"
+   ===================================================================== */
+const REPLIKLER = [
+  { bolum: "👋 Karşılama", tur: "karsilama", dugmeler: [
+    { e:"👋", ad:"Hoş geldin", son:"neseli", cumleler:[
+      "Merhaba {ad}! Ben Limon. Hoş geldin!",
+      "Vay, kim gelmiş! Hoş geldin {ad}! Seni gördüğüme çok sevindim.",
+      "Merhabaaa {ad}! Ben Limon, bugün senin yardımcınım!" ]},
+    { e:"🍋", ad:"Kendini tanıt", son:"goz_kirp", cumleler:[
+      "Benim adım Limon. Biraz ekşiyim ama çok tatlıyım!",
+      "Ben Limon! Dişleri pırıl pırıl yapmayı çok severim." ]},
+    { e:"🪑", ad:"Koltuğa otur", son:"mutlu", cumleler:[
+      "Bu koltuk bir uzay gemisi gibi! Hadi otur bakalım, yavaşça yukarı çıkıyoruz!",
+      "Hadi bakalım {ad}, sihirli koltuğumuza otur!" ]},
+  ]},
+  { bolum: "🦷 Muayene", tur: "muayene", dugmeler: [
+    { e:"🦁", ad:"Aslan gibi aç", son:"neseli", cumleler:[
+      "Hadi ağzını aslan gibi kocaman aç bakalım! Aaaa!",
+      "Bir aslan ne kadar büyük açar ağzını? Göster bakalım! Aaaa!",
+      "Kocaman bir timsah ağzı! Haydi aç bakalım!" ]},
+    { e:"🔢", ad:"Dişleri sayalım", son:"mutlu", cumleler:[
+      "Dişlerini birlikte sayalım mı? Bir, iki, üç, dört…",
+      "Bakalım kaç tane inci tanen var? Doktor sayıyor!" ]},
+    { e:"🪞", ad:"Minik ayna", son:"gulumse", cumleler:[
+      "Şimdi doktor minik bir ayna ile dişlerine bakacak. Dişlerin kendini aynada görecek!",
+      "Bu minik ayna dişlerine merhaba diyor!" ]},
+    { e:"🕶️", ad:"Gözlük", son:"neseli", cumleler:[
+      "Süper kahraman gözlüklerini tak bakalım! Çok havalı oldun!" ]},
+    { e:"💦", ad:"Su ve hava", son:"gulumse", cumleler:[
+      "Şimdi minik bir yağmur geliyor! Fışşş!",
+      "Bu küçük rüzgar dişlerini kurutuyor. Vuuuş!" ]},
+    { e:"✋", ad:"El kaldırma", son:"mutlu", cumleler:[
+      "Bir şey söylemek istersen elini kaldır, doktor hemen durur. Söz!",
+      "Unutma, elini kaldırırsan hemen mola veririz." ]},
+  ]},
+  { bolum: "💪 Cesaret", tur: "cesaret", dugmeler: [
+    { e:"⭐", ad:"Aferin", son:"neseli", cumleler:[
+      "Aferin {ad}! Çok cesursun!",
+      "Süpersin! Tam bir kahraman gibisin!",
+      "Vay be! Bu kadar uslu bir hasta görmemiştim!" ]},
+    { e:"⏳", ad:"Az kaldı", son:"mutlu", cumleler:[
+      "Harika gidiyorsun, az kaldı!",
+      "Neredeyse bitti! Beşe kadar sayalım mı? Bir, iki, üç, dört, beş!" ]},
+    { e:"🌬️", ad:"Nefes al", son:"gulumse", cumleler:[
+      "Burnundan derin bir nefes al… ve yavaşça ver. Çok güzel!",
+      "Bir balon şişiriyormuş gibi nefes al… şimdi yavaşça bırak." ]},
+  ]},
+  { bolum: "🎉 Bitiş", tur: "bitis", dugmeler: [
+    { e:"🏆", ad:"Bitti!", son:"neseli", cumleler:[
+      "Bitti! Harikaydın {ad}!",
+      "İşte bu kadar! Sen bugünün şampiyonusun!" ]},
+    { e:"✨", ad:"Pırıl pırıl", son:"mutlu", cumleler:[
+      "Dişlerin pırıl pırıl oldu! Gülümse bakalım!" ]},
+    { e:"🪥", ad:"Fırçalamayı unutma", son:"goz_kirp", cumleler:[
+      "Akşam dişlerini fırçalamayı unutma! Görüşürüz {ad}!",
+      "Sabah ve akşam iki dakika fırçala, tamam mı? Hoşça kal!" ]},
+  ]},
+  { bolum: "😄 Şakalar", tur: "saka", dugmeler: [
+    { e:"🐊", ad:"Timsah", son:"neseli", cumleler:[
+      "Timsahlar dişlerini nasıl fırçalar biliyor musun? Çooook dikkatli! Hihi!" ]},
+    { e:"🍋", ad:"Limon şakası", son:"goz_kirp", cumleler:[
+      "Ben de bir kere dişçiye gittim. Ama limonların dişi yokmuş! Hihi!",
+      "Bana limonata yapmasınlar diye hep gülümsüyorum! Hihi!" ]},
+    { e:"🦷", ad:"Diş perisi", son:"mutlu", cumleler:[
+      "Diş perisi bana fısıldadı: senin dişlerin çok güzelmiş!" ]},
+  ]},
+];
+
+/* Limon'a dokununca söyleyeceği kısa sözler */
+const DOKUNMA = ["Hihi, gıdıklanıyorum!", "Hey, burası benim burnum!", "Hihi! Bir daha!", "Merhaba!"];
+
+/* ===================================================================== */
+
+const FRAME = {sessiz:0, konus1:1, konus2:2, konus3:3, gulumse:4, goz_kirp:5, mutlu:6, neseli:7, kirp:8};
+const W = 384, H = 400;
+const canvas = document.getElementById('face'), ctx = canvas.getContext('2d');
+const faceWrap = document.getElementById('faceWrap'), bubble = document.getElementById('bubble');
+const warnEl = document.getElementById('warn');
+const sheet = new Image();
+sheet.src = 'limon_kareler.png';
+
+let current = 'sessiz', talking = false, talkTimer = null, restTimer = null, bubbleTimer = null;
+let blinkUntil = 0, nextBlink = performance.now() + 2500;
+
+function draw(name){
+  if (!sheet.complete || !sheet.naturalWidth) return;
+  ctx.clearRect(0,0,W,H);
+  ctx.drawImage(sheet, FRAME[name]*W, 0, W, H, 0, 0, W, H);
+}
+function setFace(name){ current = name; draw(name); }
+sheet.onload = () => draw(current);
+sheet.onerror = () => showWarn('limon_kareler.png bulunamadı. Bu dosya index.html ile aynı klasörde olmalı.');
+
+/* Kendiliğinden göz kırpma: sadece sessiz/gülümseme yüzlerinde */
+function idleLoop(now){
+  const canBlink = !talking && (current === 'sessiz' || current === 'gulumse');
+  if (canBlink && now >= nextBlink){
+    draw('kirp'); blinkUntil = now + 130;
+    // Arada bir çift kırpma
+    nextBlink = now + (Math.random() < .2 ? 330 : 2500 + Math.random()*3500);
+  }
+  if (blinkUntil && now >= blinkUntil){ blinkUntil = 0; draw(current); }
+  requestAnimationFrame(idleLoop);
+}
+requestAnimationFrame(idleLoop);
+
+/* Konuşurken ağız hareketi */
+const TALK = ['konus1','konus2','konus3','konus2','sessiz','konus1','konus3'];
+function startTalking(){
+  talking = true; faceWrap.classList.add('talking');
+  clearTimeout(restTimer); clearTimeout(talkTimer);
+  let i = 0;
+  const step = () => {
+    if (!talking) return;
+    setFace(TALK[i++ % TALK.length]);
+    talkTimer = setTimeout(step, 110 + Math.random()*90);
+  };
+  step();
+}
+function stopTalking(endFace){
+  talking = false; faceWrap.classList.remove('talking');
+  clearTimeout(talkTimer);
+  setFace(endFace || 'sessiz');
+  clearTimeout(restTimer);
+  if (endFace && endFace !== 'sessiz') restTimer = setTimeout(() => setFace('sessiz'), 2600);
+}
+
+/* Konuşma balonu (ses yoksa da doktor ne söylendiğini görür) */
+function showBubble(text){
+  clearTimeout(bubbleTimer);
+  bubble.textContent = text; bubble.classList.add('show');
+}
+function hideBubbleSoon(){ clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => bubble.classList.remove('show'), 3500); }
+
+/* ---------- Ses (tarayıcının Türkçe seslendirmesi) ---------- */
+const synth = window.speechSynthesis;
+const settings = { voiceURI:'', rate:0.95, pitch:1.35 };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('limon-ayarlar') || '{}')); } catch(e){}
+function saveSettings(){ try { localStorage.setItem('limon-ayarlar', JSON.stringify(settings)); } catch(e){} }
+
+let voices = [];
+const voiceSel = document.getElementById('voice');
+function loadVoices(){
+  if (!synth) return;
+  voices = synth.getVoices();
+  const tr = voices.filter(v => v.lang && v.lang.toLowerCase().replace('_','-').startsWith('tr'));
+  const list = tr.length ? tr : voices;
+  voiceSel.innerHTML = '';
+  list.forEach(v => { const o = document.createElement('option'); o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`; voiceSel.appendChild(o); });
+  if (settings.voiceURI && list.some(v => v.voiceURI === settings.voiceURI)) voiceSel.value = settings.voiceURI;
+  else if (list[0]) settings.voiceURI = list[0].voiceURI;
+  if (voices.length && !tr.length) showWarn('Bu cihazda Türkçe ses bulunamadı. Tablet ayarlarından Türkçe seslendirme sesini indirin (iPad: Ayarlar › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe; Android: Ayarlar › Metin okuma › Google › Türkçe).');
+  else hideWarn();
+}
+if (synth){ loadVoices(); synth.onvoiceschanged = loadVoices; setTimeout(loadVoices, 800); }
+else showWarn('Bu tarayıcı seslendirmeyi desteklemiyor. Limon yine de konuşma balonuyla ve ağız hareketiyle çalışır.');
+
+function showWarn(t){ warnEl.textContent = t; warnEl.classList.add('show'); }
+function hideWarn(){ warnEl.classList.remove('show'); }
+
+let speakId = 0;
+function speak(text, endFace){
+  text = fillName(text);
+  const id = ++speakId;
+  showBubble(text);
+  if (synth) synth.cancel();
+  startTalking();
+
+  // Uzun metinleri cümlelere böl (bazı tarayıcılar uzun cümlede takılıyor)
+  const parts = text.match(/[^.!?…]+[.!?…]*/g)?.map(s => s.trim()).filter(Boolean) || [text];
+
+  const finish = () => { if (id !== speakId) return; stopTalking(endFace || 'gulumse'); hideBubbleSoon(); };
+
+  if (!synth){ // ses yoksa yalnızca animasyon
+    setTimeout(finish, Math.min(9000, 900 + text.length * 65));
+    return;
+  }
+  const voice = voices.find(v => v.voiceURI === settings.voiceURI);
+  let idx = 0;
+  const next = () => {
+    if (id !== speakId) return;
+    if (idx >= parts.length) return finish();
+    const u = new SpeechSynthesisUtterance(parts[idx++]);
+    u.lang = 'tr-TR'; if (voice) u.voice = voice;
+    u.rate = settings.rate; u.pitch = settings.pitch;
+    u.onstart = () => { if (id === speakId && !talking) startTalking(); };
+    u.onend = () => { if (id !== speakId) return; if (idx < parts.length){ talking = false; clearTimeout(talkTimer); setFace('sessiz'); } next(); };
+    u.onerror = () => finish();
+    synth.speak(u);
+  };
+  // iPad'de cancel()'dan hemen sonra speak() bazen yutuluyor; kısa bekleme
+  setTimeout(next, 60);
+  // Güvenlik: ses olayları hiç gelmezse animasyonu yine de durdur
+  setTimeout(() => { if (id === speakId && talking && !synth.speaking) finish(); }, 2500 + text.length * 120);
+}
+function hush(){ speakId++; if (synth) synth.cancel(); stopTalking('sessiz'); bubble.classList.remove('show'); }
+
+/* ---------- Çocuğun adı ---------- */
+const nameInput = document.getElementById('childName');
+function fillName(t){
+  const n = nameInput.value.trim();
+  if (n) return t.replace(/\{ad\}/g, n.charAt(0).toLocaleUpperCase('tr-TR') + n.slice(1));
+  return t.replace(/\s*,?\s*\{ad\}\s*/g, ' ').replace(/\s+([!?.,])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+}
+document.getElementById('newPatient').onclick = () => { nameInput.value = ''; hush(); };
+
+/* ---------- Düğmeleri oluştur ---------- */
+const lastPick = new Map();
+function pick(btn){
+  const c = btn.cumleler;
+  if (c.length === 1) return c[0];
+  let i; do { i = Math.floor(Math.random()*c.length); } while (i === lastPick.get(btn));
+  lastPick.set(btn, i); return c[i];
+}
+const host = document.getElementById('phrases');
+REPLIKLER.forEach(sec => {
+  const h = document.createElement('h2'); h.textContent = sec.bolum; host.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid'; host.appendChild(g);
+  sec.dugmeler.forEach(btn => {
+    const b = document.createElement('button');
+    b.className = 'say cat-' + sec.tur;
+    b.innerHTML = `<span class="e">${btn.e}</span><span></span>`;
+    b.lastChild.textContent = btn.ad;
+    b.onclick = () => speak(pick(btn), btn.son);
+    g.appendChild(b);
+  });
+});
+
+/* Serbest metin */
+const freeText = document.getElementById('freeText');
+function sayFree(){ const t = freeText.value.trim(); if (t){ speak(t, 'gulumse'); freeText.value=''; freeText.blur(); } }
+document.getElementById('freeBtn').onclick = sayFree;
+freeText.addEventListener('keydown', e => { if (e.key === 'Enter') sayFree(); });
+
+/* Limon'a dokunma */
+let lastTouch = -1;
+faceWrap.addEventListener('click', () => {
+  if (talking) return;
+  let i; do { i = Math.floor(Math.random()*DOKUNMA.length); } while (i === lastTouch && DOKUNMA.length > 1);
+  lastTouch = i; speak(DOKUNMA[i], 'neseli');
+});
+
+document.getElementById('stopBtn').onclick = hush;
+
+/* ---------- Ayarlar ---------- */
+const rate = document.getElementById('rate'), pitch = document.getElementById('pitch');
+rate.value = settings.rate; pitch.value = settings.pitch;
+rate.oninput = () => { settings.rate = +rate.value; saveSettings(); };
+pitch.oninput = () => { settings.pitch = +pitch.value; saveSettings(); };
+voiceSel.onchange = () => { settings.voiceURI = voiceSel.value; saveSettings(); };
+document.getElementById('testVoice').onclick = () => speak('Merhaba! Ben Limon. Sesim nasıl?', 'neseli');
+document.getElementById('fullscreen').onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+};
+document.getElementById('hidePanel').onclick = () => document.body.classList.add('hidden-panel');
+document.getElementById('showPanel').onclick = () => document.body.classList.remove('hidden-panel');
+
+/* Muayene sırasında ekran kararmasın */
+let wakeLock = null;
+async function keepAwake(){ try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.onrelease = () => wakeLock = null; } } catch(e){} }
+document.addEventListener('click', keepAwake);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+</script>
+</body>
+</html>
