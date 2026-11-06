@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Limon v3</title>
+<style>
+:root{
+  --bg:#fff; --panel:#fffbea; --ink:#2f2a14; --muted:#7a7150;
+  --lemon:#ffe14d; --lemon-dark:#d9b51f; --line:#efe6c2;
+  --green:#4c9a2a; --red:#e2553f;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;overflow:hidden;user-select:none;-webkit-user-select:none}
+
+/* ---------- Limon tarafı ---------- */
+.stage{flex:1 1 55%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;position:relative;min-width:0;background:#fff;overflow:hidden}
+.bubble{min-height:3.2em;max-width:min(92%,640px);background:#fff8d6;border:2px solid #f0dc8a;border-radius:22px;
+  padding:12px 20px;font-size:clamp(18px,2.6vw,28px);line-height:1.3;text-align:center;font-weight:650;
+  box-shadow:0 6px 18px rgba(120,100,20,.08);opacity:0;transform:translateY(8px) scale(.96);transition:opacity .25s,transform .3s cubic-bezier(.3,1.6,.5,1);position:relative;z-index:2}
+.bubble.show{opacity:1;transform:none}
+.bubble:after{content:"";position:absolute;left:50%;bottom:-12px;width:20px;height:20px;background:#fff8d6;border-right:2px solid #f0dc8a;border-bottom:2px solid #f0dc8a;transform:translateX(-50%) rotate(45deg)}
+.face-wrap{width:min(100%,calc((100vh - 190px) * .92),640px);aspect-ratio:460/500;margin-top:6px;cursor:pointer;position:relative;z-index:1}
+#face{width:100%;height:100%;display:block}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+.warn{position:absolute;top:12px;left:12px;right:12px;background:#fff1ee;border:1px solid #f3c2b8;color:#8a2c1b;border-radius:12px;padding:10px 14px;font-size:14px;display:none;z-index:4}
+.warn.show{display:block}
+
+/* ---------- Doktor paneli ---------- */
+.panel{flex:0 0 45%;max-width:560px;background:var(--panel);border-left:2px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.top{padding:12px 14px;border-bottom:2px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.top input{flex:1 1 140px;min-width:0;font:inherit;font-size:18px;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+.top input:focus{outline:none;border-color:var(--lemon-dark)}
+.icon-btn{font:inherit;font-size:15px;font-weight:650;border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.icon-btn:active{transform:scale(.96)}
+.stop{background:var(--red);border-color:var(--red);color:#fff}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 20px}
+h2{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 2px 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.say{font:inherit;font-size:17px;font-weight:650;text-align:left;line-height:1.2;min-height:62px;padding:10px 12px;border-radius:14px;
+  border:2px solid var(--lemon-dark);background:var(--lemon);color:var(--ink);cursor:pointer;display:flex;gap:8px;align-items:center;position:relative}
+.say .e{font-size:24px;flex:none}
+.say:active{transform:scale(.97);filter:brightness(.95)}
+.say .dot{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:#4c9a2a;display:none}
+.say.has-audio .dot{display:block}
+.say.cat-muayene{background:#fff4b8}
+.say.cat-cesaret{background:#e4f6d6;border-color:#9fcf7f}
+.say.cat-bitis{background:#ffe3d1;border-color:#f0b28c}
+.say.cat-saka{background:#efe6ff;border-color:#c3afee}
+.free{display:flex;gap:8px;margin-top:8px}
+.free input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff}
+.free button{font:inherit;font-weight:700;font-size:17px;padding:0 18px;border-radius:12px;border:2px solid var(--green);background:var(--green);color:#fff}
+details{margin-top:18px;border:2px solid var(--line);border-radius:14px;padding:10px 14px;background:#fff}
+summary{font-weight:700;cursor:pointer;color:var(--muted)}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;flex-wrap:wrap}
+.row label{width:90px;flex:none}
+.row input[type=range]{flex:1}
+.row select{flex:1;font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line)}
+.hint{font-size:13px;color:var(--muted);line-height:1.45;margin-top:10px}
+
+/* Ses listesi penceresi */
+.modal{position:fixed;inset:0;background:rgba(40,35,10,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+.modal.show{display:flex}
+.sheet{background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.sheet header{padding:14px 18px;border-bottom:2px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sheet header b{flex:1;font-size:18px}
+.sheet .body{overflow:auto;padding:4px 18px 18px;-webkit-user-select:text;user-select:text}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{padding:7px 6px;border-bottom:1px solid #f0ead2;text-align:left;vertical-align:top}
+th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;background:#fff}
+td.f{font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+td.ok{color:var(--green);font-weight:700}
+
+body.hidden-panel .panel{display:none}
+.show-panel{position:fixed;right:12px;bottom:12px;display:none;opacity:.35;z-index:5}
+body.hidden-panel .show-panel{display:block}
+
+@media (orientation:portrait){
+  body{flex-direction:column}
+  .stage{flex:1 1 52%}
+  .face-wrap{width:min(80vw,calc((52vh - 110px) * .92))}
+  .panel{flex:1 1 48%;max-width:none;border-left:none;border-top:2px solid var(--line)}
+}
+@media (prefers-reduced-motion:reduce){ .bubble{transition:none} }
+</style>
+</head>
+<body>
+
+<section class="stage" id="stage">
+  <div class="warn" id="warn"></div>
+  <div class="bubble" id="bubble"></div>
+  <div class="face-wrap" id="faceWrap" title="Limon'a dokun!">
+    <canvas id="face" aria-label="Limon"></canvas>
+  </div>
+  <canvas id="fx"></canvas>
+</section>
+
+<aside class="panel">
+  <div class="top">
+    <input id="childName" placeholder="Çocuğun adı (isteğe bağlı)" autocomplete="off" autocapitalize="words">
+    <button class="icon-btn" id="newPatient" title="Adı temizle">🧒 Yeni hasta</button>
+    <button class="icon-btn stop" id="stopBtn">⏹ Sus</button>
+  </div>
+  <div class="scroll">
+    <div id="phrases"></div>
+
+    <h2>✍️ Limon'a söylet</h2>
+    <div class="free">
+      <input id="freeText" placeholder="Bir cümle yaz…" enterkeyhint="send">
+      <button id="freeBtn">Söyle</button>
+    </div>
+
+    <details>
+      <summary>⚙️ Ayarlar</summary>
+      <div class="row"><button class="icon-btn" id="audioListBtn">🎙️ Ses dosyaları listesi</button><span id="audioCount" class="hint" style="margin:0"></span></div>
+      <p class="hint">Yeşil noktalı düğmeler kaydedilmiş ses dosyasını çalar. Noktasızlar cihazın kendi sesini kullanır.</p>
+      <div class="row"><label for="voice">Cihaz sesi</label><select id="voice"></select></div>
+      <div class="row"><label for="rate">Hız</label><input type="range" id="rate" min="0.6" max="1.3" step="0.05"></div>
+      <div class="row"><label for="pitch">Ses tonu</label><input type="range" id="pitch" min="0.8" max="2" step="0.05"></div>
+      <div class="row">
+        <button class="icon-btn" id="testVoice">🔊 Sesi dene</button>
+        <button class="icon-btn" id="fullscreen">⛶ Tam ekran</button>
+        <button class="icon-btn" id="hidePanel">🙈 Paneli gizle</button>
+      </div>
+      <p class="hint">Çocuğun adı hiçbir yere kaydedilmez; sayfa kapanınca ya da "Yeni hasta"ya basınca silinir. Mikrofon kullanılmaz.
+      Replikleri değiştirmek için bu dosyanın en üstündeki <b>REPLİKLER</b> listesini düzenleyin.</p>
+    </details>
+  </div>
+</aside>
+<button class="icon-btn show-panel" id="showPanel">☰</button>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <header><b>🎙️ Ses dosyaları</b>
+      <button class="icon-btn" id="copyList">📋 Listeyi kopyala</button>
+      <button class="icon-btn" id="closeModal">✕</button></header>
+    <div class="body">
+      <p class="hint">Her cümleyi aşağıdaki dosya adıyla <b>sesler</b> klasörüne koyun (mp3). Limon o cümlede bu sesi çalar,
+      ağzı da sesin yüksekliğine göre oynar. Kayıtta çocuğun adı geçmez; ad sadece balonda görünür.</p>
+      <table><thead><tr><th>Dosya adı</th><th>Söylenecek cümle</th><th></th></tr></thead><tbody id="audioRows"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   REPLİKLER — Buradan istediğiniz gibi değiştirebilirsiniz.
+   - id: kısa, Türkçe karaktersiz bir ad. Ses dosyaları bu adla eşleşir:
+         id "hosgeldin" ise 1. cümlenin sesi  sesler/hosgeldin_1.mp3
+   - Her düğmenin birden fazla cümlesi olabilir; Limon her basışta
+     bir öncekinden farklı birini seçer.
+   - {ad} yazan yere çocuğun adı gelir (yalnızca cihaz sesinde söylenir).
+   - son: konuşma bitince yüz: "mutlu", "neseli", "goz_kirp", "gulumse"
+   - kutla: true ise Limon konuşurken konfeti patlar.
+   ===================================================================== */
+const REPLIKLER = [
+  { bolum: "👋 Karşılama", tur: "karsilama", dugmeler: [
+    { id:"hosgeldin", e:"👋", ad:"Hoş geldin", son:"neseli", kutla:true, cumleler:[
+      "Merhaba {ad}! Ben Limon. Hoş geldin!",
+      "Vay, kim gelmiş! Hoş geldin {ad}! Seni gördüğüme çok sevindim.",
+      "Merhabaaa {ad}! Ben Limon, bugün senin yardımcınım!" ]},
+    { id:"tanis", e:"🍋", ad:"Kendini tanıt", son:"goz_kirp", cumleler:[
+      "Benim adım Limon. Biraz ekşiyim ama çok tatlıyım!",
+      "Ben Limon! Dişleri pırıl pırıl yapmayı çok severim." ]},
+    { id:"koltuk", e:"🪑", ad:"Koltuğa otur", son:"mutlu", cumleler:[
+      "Bu koltuk bir uzay gemisi gibi! Hadi otur bakalım, yavaşça yukarı çıkıyoruz!",
+      "Hadi bakalım {ad}, sihirli koltuğumuza otur!" ]},
+  ]},
+  { bolum: "🦷 Muayene", tur: "muayene", dugmeler: [
+    { id:"aslan", e:"🦁", ad:"Aslan gibi aç", son:"neseli", cumleler:[
+      "Hadi ağzını aslan gibi kocaman aç bakalım! Aaaa!",
+      "Bir aslan ne kadar büyük açar ağzını? Göster bakalım! Aaaa!",
+      "Kocaman bir timsah ağzı! Haydi aç bakalım!" ]},
+    { id:"say", e:"🔢", ad:"Dişleri sayalım", son:"mutlu", cumleler:[
+      "Dişlerini birlikte sayalım mı? Bir, iki, üç, dört…",
+      "Bakalım kaç tane inci tanen var? Doktor sayıyor!" ]},
+    { id:"ayna", e:"🪞", ad:"Minik ayna", son:"gulumse", cumleler:[
+      "Şimdi doktor minik bir ayna ile dişlerine bakacak. Dişlerin kendini aynada görecek!",
+      "Bu minik ayna dişlerine merhaba diyor!" ]},
+    { id:"gozluk", e:"🕶️", ad:"Gözlük", son:"neseli", cumleler:[
+      "Süper kahraman gözlüklerini tak bakalım! Çok havalı oldun!" ]},
+    { id:"su", e:"💦", ad:"Su ve hava", son:"gulumse", cumleler:[
+      "Şimdi minik bir yağmur geliyor! Fışşş!",
+      "Bu küçük rüzgar dişlerini kurutuyor. Vuuuş!" ]},
+    { id:"el", e:"✋", ad:"El kaldırma", son:"mutlu", cumleler:[
+      "Bir şey söylemek istersen elini kaldır, doktor hemen durur. Söz!",
+      "Unutma, elini kaldırırsan hemen mola veririz." ]},
+  ]},
+  { bolum: "💪 Cesaret", tur: "cesaret", dugmeler: [
+    { id:"aferin", e:"⭐", ad:"Aferin", son:"neseli", kutla:true, cumleler:[
+      "Aferin {ad}! Çok cesursun!",
+      "Süpersin! Tam bir kahraman gibisin!",
+      "Vay be! Bu kadar uslu bir hasta görmemiştim!" ]},
+    { id:"azkaldi", e:"⏳", ad:"Az kaldı", son:"mutlu", cumleler:[
+      "Harika gidiyorsun, az kaldı!",
+      "Neredeyse bitti! Beşe kadar sayalım mı? Bir, iki, üç, dört, beş!" ]},
+    { id:"nefes", e:"🌬️", ad:"Nefes al", son:"gulumse", cumleler:[
+      "Burnundan derin bir nefes al… ve yavaşça ver. Çok güzel!",
+      "Bir balon şişiriyormuş gibi nefes al… şimdi yavaşça bırak." ]},
+  ]},
+  { bolum: "🎉 Bitiş", tur: "bitis", dugmeler: [
+    { id:"bitti", e:"🏆", ad:"Bitti!", son:"neseli", kutla:true, cumleler:[
+      "Bitti! Harikaydın {ad}!",
+      "İşte bu kadar! Sen bugünün şampiyonusun!" ]},
+    { id:"piril", e:"✨", ad:"Pırıl pırıl", son:"mutlu", kutla:true, cumleler:[
+      "Dişlerin pırıl pırıl oldu! Gülümse bakalım!" ]},
+    { id:"fircala", e:"🪥", ad:"Fırçalamayı unutma", son:"goz_kirp", cumleler:[
+      "Akşam dişlerini fırçalamayı unutma! Görüşürüz {ad}!",
+      "Sabah ve akşam iki dakika fırçala, tamam mı? Hoşça kal!" ]},
+  ]},
+  { bolum: "😄 Şakalar", tur: "saka", dugmeler: [
+    { id:"timsah", e:"🐊", ad:"Timsah", son:"neseli", cumleler:[
+      "Timsahlar dişlerini nasıl fırçalar biliyor musun? Çooook dikkatli! Hihi!" ]},
+    { id:"limonsaka", e:"🍋", ad:"Limon şakası", son:"goz_kirp", cumleler:[
+      "Ben de bir kere dişçiye gittim. Ama limonların dişi yokmuş! Hihi!",
+      "Bana limonata yapmasınlar diye hep gülümsüyorum! Hihi!" ]},
+    { id:"peri", e:"🦷", ad:"Diş perisi", son:"mutlu", cumleler:[
+      "Diş perisi bana fısıldadı: senin dişlerin çok güzelmiş!" ]},
+  ]},
+];
+
+/* Limon'a dokununca söyleyeceği kısa sözler (sesleri: dokunma_1.mp3 …) */
+const DOKUNMA = { id:"dokunma", son:"neseli", cumleler:["Hihi, gıdıklanıyorum!", "Hey, burası benim burnum!", "Hihi! Bir daha!", "Merhaba!"] };
+
+/* ===================================================================== */
+const SES_KLASORU = 'sesler/';
+const FRAME = {sessiz:0, konus1:1, konus2:2, konus3:3, gulumse:4, goz_kirp:5, mutlu:6, neseli:7, kirp:8};
+const FW = 384, FH = 400;          // tek karenin boyutu
+const LW = 460, LH = 500;          // çizim alanı (esneme payı ile)
+const BASE_X = LW/2, BASE_Y = 472; // limonun "yere bastığı" nokta
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('face'), ctx = canvas.getContext('2d');
+const fx = document.getElementById('fx'), fctx = fx.getContext('2d');
+const faceWrap = document.getElementById('faceWrap'), bubble = document.getElementById('bubble');
+const warnEl = document.getElementById('warn');
+const sheet = new Image();
+sheet.src = 'limon_kareler.png';
+sheet.onerror = () => showWarn('limon_kareler.png bulunamadı. Bu dosya index.html ile aynı klasörde olmalı.');
+
+/* ---------- Tuval boyutu (keskin görüntü için) ---------- */
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const r = faceWrap.getBoundingClientRect();
+  canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+  const s = stage.getBoundingClientRect();
+  fx.width = Math.round(s.width*dpr); fx.height = Math.round(s.height*dpr);
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+/* ---------- Yüz durumu ---------- */
+let base = 'sessiz';                 // asıl ifade
+let shown = 'sessiz', prev = 'sessiz', fadeT0 = 0, fadeDur = 1;
+let blinkUntil = 0, nextBlink = performance.now() + 2500;
+let restTimer = null;
+function show(name, dur){
+  if (name === shown) return;
+  prev = shown; shown = name; fadeT0 = performance.now(); fadeDur = dur;
+}
+function setFace(name){ base = name; show(name, 170); }
+
+/* ---------- Gövde hareketi (yay fiziği) ---------- */
+let squash = 0, squashV = 0;   // + : yanlara yayıl, - : uzan
+let tilt = 0, tiltV = 0;
+function poke(amount){ squashV += amount; }
+function wobble(amount){ tiltV += amount; }
+
+/* ---------- Konuşma seviyesi ---------- */
+let mode = 'idle';          // 'idle' | 'audio' | 'tts' | 'silent'
+let level = 0, lastFrameSwitch = 0;
+let analyser = null, ab = null;
+let synthLevel = 0, nextSyllable = 0, peak = 0.1;
+
+function currentLevel(now){
+  if (mode === 'audio' && analyser){
+    analyser.getFloatTimeDomainData(ab);
+    let s = 0; for (let i=0;i<ab.length;i++) s += ab[i]*ab[i];
+    const rms = Math.sqrt(s/ab.length);
+    // Otomatik kazanç: her kaydın en yüksek seviyesine göre ölçekle
+    peak = Math.max(peak * 0.997, rms, 0.03);
+    return Math.min(1, Math.max(0, (rms - 0.01) / (peak * 0.85)));
+  }
+  if (mode === 'tts' || mode === 'silent'){
+    // Cihaz sesinin yüksekliğini okuyamıyoruz: hece ritminde sahte seviye üret
+    if (now >= nextSyllable){ synthLevel = .45 + Math.random()*.55; nextSyllable = now + 110 + Math.random()*120; }
+    synthLevel *= 0.90;
+    return synthLevel;
+  }
+  return 0;
+}
+
+/* ---------- Ana çizim döngüsü ---------- */
+let lastT = performance.now();
+function frame(now){
+  const dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
+  const talking = mode !== 'idle';
+
+  // seviye yumuşatma: hızlı yüksel, yavaş düş
+  const target = currentLevel(now);
+  level += (target - level) * (target > level ? 0.6 : 0.25);
+
+  // konuşurken ağız karesi seviyeye göre
+  if (talking){
+    if (now - lastFrameSwitch > 75){
+      const f = level < .10 ? 'sessiz' : level < .33 ? 'konus1' : level < .6 ? 'konus2' : 'konus3';
+      if (f !== shown){ show(f, 45); lastFrameSwitch = now; }
+    }
+  } else if (shown !== base && now >= blinkUntil){
+    show(base, 170);
+  }
+
+  // göz kırpma (yalnızca sakin yüzlerde)
+  if (!talking && (base === 'sessiz' || base === 'gulumse') && now >= nextBlink && blinkUntil === 0){
+    show('kirp', 35); blinkUntil = now + 140;
+    nextBlink = now + (Math.random() < .2 ? 360 : 2500 + Math.random()*3500);
+  }
+  if (blinkUntil && now >= blinkUntil){ blinkUntil = 0; show(base, 60); }
+
+  // yay fiziği
+  const k = 170, d = 11;
+  squashV += (-k*squash - d*squashV) * dt; squash += squashV * dt;
+  tiltV   += (-120*tilt - 9*tiltV) * dt;   tilt   += tiltV * dt;
+
+  const t = now/1000;
+  const m = reduceMotion ? 0.2 : 1;
+  let sy = 1 + 0.010*Math.sin(t*1.6)*m;                  // nefes
+  let rot = 0.014*Math.sin(t*0.7)*m;                      // hafif sallanma
+  if (talking){ sy += level*0.045*m; rot += level*0.025*Math.sin(t*8)*m; }
+  sy -= squash; let sx = 1 + squash*0.9 - (sy-1)*0.45;
+  rot += tilt;
+
+  drawFace(now, sx, sy, rot);
+  drawFx(dt);
+  requestAnimationFrame(frame);
+}
+
+function drawFrame(name, alpha){
+  if (alpha <= 0) return;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(sheet, FRAME[name]*FW, 0, FW, FH, -FW/2, -FH, FW, FH);
+}
+function drawFace(now, sx, sy, rot){
+  const k = canvas.width / LW;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if (!sheet.complete || !sheet.naturalWidth) return;
+  ctx.setTransform(k,0,0,k,0,0);
+  ctx.translate(BASE_X, BASE_Y);
+  ctx.rotate(rot);
+  ctx.scale(sx, sy);
+  ctx.translate(0, 0);
+  // Gölge resmin içinde; görüntüyü alt kenardan hizalıyoruz
+  const p = Math.min(1, (now - fadeT0)/fadeDur);
+  if (p < 1) drawFrame(prev, 1);
+  drawFrame(shown, p);
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Konfeti ---------- */
+const parts = [];
+const COLORS = ['#ffd93b','#ff9f43','#7bd389','#5ec2f2','#ff7aa8','#b48cff','#ffffff'];
+function confetti(n=80){
+  if (reduceMotion) n = 20;
+  const s = stage.getBoundingClientRect(), r = faceWrap.getBoundingClientRect();
+  const dpr = fx.width / s.width;
+  const cx = (r.left - s.left + r.width/2)*dpr, cy = (r.top - s.top + r.height*0.35)*dpr;
+  for (let i=0;i<n;i++){
+    const a = -Math.PI/2 + (Math.random()-.5)*Math.PI*1.3, v = (380 + Math.random()*520)*dpr;
+    parts.push({x:cx, y:cy, vx:Math.cos(a)*v, vy:Math.sin(a)*v, r:(4+Math.random()*6)*dpr,
+      rot:Math.random()*6, vr:(Math.random()-.5)*12, c:COLORS[i%COLORS.length], shape:i%3, life:1.8+Math.random()*0.8, t:0});
+  }
+}
+function drawFx(dt){
+  fctx.setTransform(1,0,0,1,0,0);
+  fctx.clearRect(0,0,fx.width,fx.height);
+  if (!parts.length) return;
+  const g = 900 * (fx.width / stage.getBoundingClientRect().width);
+  for (let i=parts.length-1;i>=0;i--){
+    const p = parts[i];
+    p.t += dt; if (p.t > p.life){ parts.splice(i,1); continue; }
+    p.vy += g*dt; p.vx *= 0.99; p.vy *= 0.99;
+    p.x += p.vx*dt; p.y += p.vy*dt; p.rot += p.vr*dt;
+    fctx.save(); fctx.translate(p.x,p.y); fctx.rotate(p.rot);
+    fctx.globalAlpha = Math.min(1, (p.life - p.t)*2);
+    fctx.fillStyle = p.c;
+    if (p.shape === 0){ fctx.fillRect(-p.r, -p.r*0.5, p.r*2, p.r); }
+    else if (p.shape === 1){ fctx.beginPath(); fctx.arc(0,0,p.r*0.75,0,Math.PI*2); fctx.fill(); }
+    else { star(fctx, p.r*1.1); }
+    fctx.restore();
+  }
+}
+function star(c, r){
+  c.beginPath();
+  for (let i=0;i<10;i++){ const rr = i%2 ? r*0.45 : r, a = i*Math.PI/5 - Math.PI/2; c.lineTo(Math.cos(a)*rr, Math.sin(a)*rr); }
+  c.closePath(); c.fill();
+}
+requestAnimationFrame(frame);
+
+/* ---------- Konuşma balonu ---------- */
+let bubbleTimer = null;
+function showBubble(text){ clearTimeout(bubbleTimer); bubble.textContent = text; bubble.classList.add('show'); }
+function hideBubbleSoon(){ clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => bubble.classList.remove('show'), 3500); }
+
+/* ---------- Ses dosyaları (Web Audio) ---------- */
+const AC = window.AudioContext || window.webkitAudioContext;
+const audioCtx = AC ? new AC() : null;
+const buffers = new Map();   // "hosgeldin_1" -> AudioBuffer
+let currentSource = null;
+if (audioCtx){
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+  ab = new Float32Array(analyser.fftSize);
+  analyser.connect(audioCtx.destination);
+}
+function unlockAudio(){ if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(()=>{}); }
+document.addEventListener('pointerdown', unlockAudio);
+
+function decode(arr){
+  return new Promise((ok, bad) => {
+    const p = audioCtx.decodeAudioData(arr, ok, bad);
+    if (p && p.then) p.then(ok, bad);
+  });
+}
+async function loadAudio(key){
+  if (!audioCtx || location.protocol === 'file:') return;
+  try{
+    const r = await fetch(SES_KLASORU + key + '.mp3', {cache:'no-cache'});
+    if (!r.ok) return;
+    buffers.set(key, await decode(await r.arrayBuffer()));
+  } catch(e){}
+}
+function playBuffer(buf, onEnd){
+  stopAudio();
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf; src.connect(analyser); peak = 0.1;
+  src.onended = () => { if (currentSource === src){ currentSource = null; onEnd(); } };
+  currentSource = src; src.start();
+}
+function stopAudio(){ if (currentSource){ const s = currentSource; currentSource = null; try{ s.stop(); }catch(e){} } }
+
+/* ---------- Cihaz sesi (yedek) ---------- */
+const synth = window.speechSynthesis;
+const settings = { voiceURI:'', rate:0.95, pitch:1.35 };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('limon-ayarlar') || '{}')); } catch(e){}
+function saveSettings(){ try { localStorage.setItem('limon-ayarlar', JSON.stringify(settings)); } catch(e){} }
+
+let voices = [];
+const voiceSel = document.getElementById('voice');
+function loadVoices(){
+  if (!synth) return;
+  voices = synth.getVoices();
+  const tr = voices.filter(v => v.lang && v.lang.toLowerCase().replace('_','-').startsWith('tr'));
+  const list = tr.length ? tr : voices;
+  voiceSel.innerHTML = '';
+  list.forEach(v => { const o = document.createElement('option'); o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`; voiceSel.appendChild(o); });
+  if (settings.voiceURI && list.some(v => v.voiceURI === settings.voiceURI)) voiceSel.value = settings.voiceURI;
+  else if (list[0]) settings.voiceURI = list[0].voiceURI;
+  if (voices.length && !tr.length) showWarn('Bu cihazda Türkçe ses bulunamadı. Tablet ayarlarından Türkçe seslendirme sesini indirin (iPad: Ayarlar › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe).');
+  else hideWarn();
+}
+if (synth){ loadVoices(); synth.onvoiceschanged = loadVoices; setTimeout(loadVoices, 800); }
+function showWarn(t){ warnEl.textContent = t; warnEl.classList.add('show'); }
+function hideWarn(){ warnEl.classList.remove('show'); }
+
+/* ---------- Konuş ---------- */
+let speakId = 0;
+function begin(m){ mode = m; clearTimeout(restTimer); poke(-0.05); }
+function finish(id, endFace){
+  if (id !== speakId) return;
+  mode = 'idle'; setFace(endFace || 'gulumse');
+  if (endFace === 'neseli' || endFace === 'mutlu') { poke(0.10); wobble(0.6); }
+  clearTimeout(restTimer);
+  restTimer = setTimeout(() => setFace('sessiz'), 2600);
+  hideBubbleSoon();
+}
+/* key: ses dosyası adı (yoksa null), text: {ad} içerebilir */
+function speak(text, endFace, key, celebrate){
+  const id = ++speakId;
+  if (synth) synth.cancel();
+  stopAudio(); unlockAudio();
+  if (celebrate) confetti();
+
+  const buf = key && buffers.get(key);
+  if (buf){
+    showBubble(fillName(text, true) + nameTail(text));
+    begin('audio');
+    playBuffer(buf, () => finish(id, endFace));
+    return;
+  }
+  const said = fillName(text, false);
+  showBubble(said);
+  if (!synth){ begin('silent'); setTimeout(() => finish(id, endFace), Math.min(9000, 900 + said.length*65)); return; }
+
+  const parts = said.match(/[^.!?…]+[.!?…]*/g)?.map(s => s.trim()).filter(Boolean) || [said];
+  const voice = voices.find(v => v.voiceURI === settings.voiceURI);
+  let idx = 0;
+  begin('tts');
+  const next = () => {
+    if (id !== speakId) return;
+    if (idx >= parts.length) return finish(id, endFace);
+    const u = new SpeechSynthesisUtterance(parts[idx++]);
+    u.lang = 'tr-TR'; if (voice) u.voice = voice;
+    u.rate = settings.rate; u.pitch = settings.pitch;
+    u.onstart = () => { if (id === speakId) mode = 'tts'; };
+    u.onboundary = () => { if (id === speakId) synthLevel = 1; };
+    u.onend = () => { if (id !== speakId) return; if (idx < parts.length) mode = 'idle'; next(); };
+    u.onerror = () => finish(id, endFace);
+    synth.speak(u);
+  };
+  setTimeout(next, 60);
+  setTimeout(() => { if (id === speakId && mode !== 'idle' && !synth.speaking) finish(id, endFace); }, 2500 + said.length*120);
+}
+function hush(){ speakId++; if (synth) synth.cancel(); stopAudio(); mode = 'idle'; setFace('sessiz'); bubble.classList.remove('show'); }
+
+/* ---------- Çocuğun adı ---------- */
+const nameInput = document.getElementById('childName');
+function niceName(){ const n = nameInput.value.trim(); return n ? n.charAt(0).toLocaleUpperCase('tr-TR') + n.slice(1) : ''; }
+function stripName(t){ return t.replace(/\s*,?\s*\{ad\}\s*/g, ' ').replace(/\s+([!?.,])/g, '$1').replace(/\s{2,}/g, ' ').trim(); }
+function fillName(t, forceStrip){ const n = niceName(); return (n && !forceStrip) ? t.replace(/\{ad\}/g, n) : stripName(t); }
+function nameTail(t){ const n = niceName(); return (n && t.includes('{ad}')) ? ' 💛 ' + n : ''; }
+document.getElementById('newPatient').onclick = () => { nameInput.value = ''; hush(); };
+
+/* ---------- Düğmeler ---------- */
+const lastPick = new Map();
+function pickIndex(btn){
+  const c = btn.cumleler; if (c.length === 1) return 0;
+  let i; do { i = Math.floor(Math.random()*c.length); } while (i === lastPick.get(btn));
+  lastPick.set(btn, i); return i;
+}
+function sayFrom(btn){ const i = pickIndex(btn); speak(btn.cumleler[i], btn.son, `${btn.id}_${i+1}`, btn.kutla); }
+
+const host = document.getElementById('phrases');
+const btnEls = new Map();
+REPLIKLER.forEach(sec => {
+  const h = document.createElement('h2'); h.textContent = sec.bolum; host.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid'; host.appendChild(g);
+  sec.dugmeler.forEach(btn => {
+    const b = document.createElement('button');
+    b.className = 'say cat-' + sec.tur;
+    b.innerHTML = `<span class="e">${btn.e}</span><span></span><i class="dot" title="Kayıtlı ses"></i>`;
+    b.children[1].textContent = btn.ad;
+    b.onclick = () => sayFrom(btn);
+    g.appendChild(b); btnEls.set(btn, b);
+  });
+});
+
+const ALL = [...REPLIKLER.flatMap(s => s.dugmeler), DOKUNMA];
+Promise.all(ALL.flatMap(b => b.cumleler.map((_, i) => loadAudio(`${b.id}_${i+1}`)))).then(refreshAudioUI);
+function refreshAudioUI(){
+  let have = 0, total = 0;
+  ALL.forEach(b => {
+    const n = b.cumleler.filter((_, i) => buffers.has(`${b.id}_${i+1}`)).length;
+    have += n; total += b.cumleler.length;
+    const el = btnEls.get(b); if (el) el.classList.toggle('has-audio', n > 0);
+  });
+  document.getElementById('audioCount').textContent = `${have} / ${total} cümlenin sesi var`;
+}
+
+/* Serbest metin */
+const freeText = document.getElementById('freeText');
+function sayFree(){ const t = freeText.value.trim(); if (t){ speak(t, 'gulumse', null); freeText.value=''; freeText.blur(); } }
+document.getElementById('freeBtn').onclick = sayFree;
+freeText.addEventListener('keydown', e => { if (e.key === 'Enter') sayFree(); });
+
+/* Limon'a dokunma: sıkış + kıkırda */
+faceWrap.addEventListener('pointerdown', () => {
+  poke(0.9); wobble((Math.random()-.5)*2.5);
+  if (mode !== 'idle') return;
+  sayFrom(DOKUNMA);
+});
+
+document.getElementById('stopBtn').onclick = hush;
+
+/* ---------- Ses listesi penceresi ---------- */
+const modal = document.getElementById('modal');
+function listRows(){ return ALL.flatMap(b => b.cumleler.map((c, i) => ({ f:`${b.id}_${i+1}.mp3`, k:`${b.id}_${i+1}`, t: stripName(c) }))); }
+document.getElementById('audioListBtn').onclick = () => {
+  const tb = document.getElementById('audioRows'); tb.innerHTML = '';
+  listRows().forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="f"></td><td></td><td></td>';
+    tr.children[0].textContent = r.f; tr.children[1].textContent = r.t;
+    if (buffers.has(r.k)){ tr.children[2].textContent = '✓'; tr.children[2].className = 'ok'; }
+    tb.appendChild(tr);
+  });
+  modal.classList.add('show');
+};
+document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+document.getElementById('copyList').onclick = async () => {
+  const txt = listRows().map(r => `${r.f}\t${r.t}`).join('\n');
+  try { await navigator.clipboard.writeText(txt); document.getElementById('copyList').textContent = '✓ Kopyalandı'; }
+  catch(e){ alert(txt); }
+};
+
+/* ---------- Ayarlar ---------- */
+const rate = document.getElementById('rate'), pitch = document.getElementById('pitch');
+rate.value = settings.rate; pitch.value = settings.pitch;
+rate.oninput = () => { settings.rate = +rate.value; saveSettings(); };
+pitch.oninput = () => { settings.pitch = +pitch.value; saveSettings(); };
+voiceSel.onchange = () => { settings.voiceURI = voiceSel.value; saveSettings(); };
+document.getElementById('testVoice').onclick = () => speak('Merhaba! Ben Limon. Sesim nasıl?', 'neseli', null);
+document.getElementById('fullscreen').onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+};
+document.getElementById('hidePanel').onclick = () => document.body.classList.add('hidden-panel');
+document.getElementById('showPanel').onclick = () => document.body.classList.remove('hidden-panel');
+
+/* Muayene sırasında ekran kararmasın */
+let wakeLock = null;
+async function keepAwake(){ try { if ('wakeLock' in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.onrelease = () => wakeLock = null; } } catch(e){} }
+document.addEventListener('click', keepAwake);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+</script>
+</body>
+</html>

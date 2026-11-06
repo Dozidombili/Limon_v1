@@ -1,0 +1,12 @@
+LİMON SES DOSYALARI
+===================
+
+Bu klasöre Limon'un cümlelerinin ses kayıtlarını koyun (mp3).
+
+- Dosya adları önemli: Limon sayfasında Ayarlar > "Ses dosyaları listesi"
+  hangi cümlenin hangi adla kaydedileceğini gösterir (ör. hosgeldin_1.mp3).
+- Kayıtlarda çocuğun adı geçmesin; ad yalnızca konuşma balonunda görünür.
+- Sesi olmayan cümlelerde Limon cihazın kendi sesini kullanır.
+- Dosyaları ekledikten sonra GitHub Desktop'ta Commit + Push yapın.
+- Not: Sayfayı Mac'te çift tıklayıp açınca ses dosyaları çalışmaz;
+  GitHub'daki adresten açın.
