@@ -258,15 +258,20 @@ new ResizeObserver(resize).observe(stage);
 resize();
 
 /* ---------- Yüz durumu ---------- */
+// Gözler ve ağız ayrı katmanlar: konuşurken yalnızca ağız değişir, gözler sakin kalır.
+const SPLIT = 84;                    // yüz katmanında: üstü gözler, altı ağız
+const eyes  = { y0:0,     h:SPLIT,       shown:'sessiz', prev:'sessiz', t0:0, dur:1 };
+const mouth = { y0:SPLIT, h:150 - SPLIT, shown:'sessiz', prev:'sessiz', t0:0, dur:1 };
 let base = 'sessiz';                 // asıl ifade
-let shown = 'sessiz', prev = 'sessiz', fadeT0 = 0, fadeDur = 1;
 let blinkUntil = 0, nextBlink = performance.now() + 2500;
 let restTimer = null;
-function show(name, dur){
-  if (name === shown) return;
-  prev = shown; shown = name; fadeT0 = performance.now(); fadeDur = dur;
+function show(part, name, dur){
+  if (name === part.shown) return;
+  part.prev = part.shown; part.shown = name; part.t0 = performance.now(); part.dur = dur;
 }
-function setFace(name){ base = name; show(name, 170); }
+function setFace(name){ base = name; if (!blinkUntil) show(eyes, name, 170); show(mouth, name, 170); }
+const MOUTHS = ['sessiz','konus1','konus2','konus3'];
+let mouthIdx = 0;
 
 /* ---------- Gövde hareketi (yay fiziği) ---------- */
 let squash = 0, squashV = 0;   // + : yanlara yayıl, - : uzan
@@ -291,7 +296,7 @@ function currentLevel(now){
   }
   if (mode === 'tts' || mode === 'silent'){
     // Cihaz sesinin yüksekliğini okuyamıyoruz: hece ritminde sahte seviye üret
-    if (now >= nextSyllable){ synthLevel = .45 + Math.random()*.55; nextSyllable = now + 110 + Math.random()*120; }
+    if (now >= nextSyllable){ synthLevel = .45 + Math.random()*.55; nextSyllable = now + 170 + Math.random()*150; }
     synthLevel *= 0.90;
     return synthLevel;
   }
@@ -308,22 +313,30 @@ function frame(now){
   const target = currentLevel(now);
   level += (target - level) * (target > level ? 0.6 : 0.25);
 
-  // konuşurken ağız karesi seviyeye göre
+  // Ağız: seviyeye göre, ama sakin — her kare en az 150 ms durur ve
+  // bir seferde yalnızca bir adım açılır/kapanır.
   if (talking){
-    if (now - lastFrameSwitch > 75){
-      const f = level < .10 ? 'sessiz' : level < .33 ? 'konus1' : level < .6 ? 'konus2' : 'konus3';
-      if (f !== shown){ show(f, 45); lastFrameSwitch = now; }
+    if (now - lastFrameSwitch > 150){
+      const target = level < .12 ? 0 : level < .38 ? 1 : level < .65 ? 2 : 3;
+      if (target !== mouthIdx){
+        mouthIdx += Math.sign(target - mouthIdx);
+        show(mouth, MOUTHS[mouthIdx], 90); lastFrameSwitch = now;
+      }
     }
-  } else if (shown !== base && now >= blinkUntil){
-    show(base, 170);
+  } else {
+    mouthIdx = 0;
+    if (mouth.shown !== base) show(mouth, base, 170);
   }
 
-  // göz kırpma (yalnızca sakin yüzlerde)
-  if (!talking && (base === 'sessiz' || base === 'gulumse') && now >= nextBlink && blinkUntil === 0){
-    show('kirp', 35); blinkUntil = now + 140;
+  // Gözler: konuşurken de sabit, sadece kırpılır
+  const eyesRest = talking ? 'sessiz' : base;
+  const calmEyes = talking || base === 'sessiz' || base === 'gulumse';
+  if (calmEyes && blinkUntil === 0 && now >= nextBlink){
+    show(eyes, 'kirp', 35); blinkUntil = now + 140;
     nextBlink = now + (Math.random() < .2 ? 360 : 2500 + Math.random()*3500);
   }
-  if (blinkUntil && now >= blinkUntil){ blinkUntil = 0; show(base, 60); }
+  if (blinkUntil && now >= blinkUntil){ blinkUntil = 0; show(eyes, eyesRest, 60); }
+  if (!blinkUntil && eyes.shown !== eyesRest) show(eyes, eyesRest, 170);
 
   // Gövde sabit; yalnızca Limon'a dokununca kısa bir "jöle" sıkışması
   const k = 170, d = 11;
@@ -336,10 +349,15 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
-function drawFeatures(name, alpha){
+function drawPart(part, name, alpha){
   if (alpha <= 0) return;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(faces, FRAME[name]*FCW, 0, FCW, FCH, FX0 - FW/2, FY0 - FH, FCW, FCH);
+  ctx.drawImage(faces, FRAME[name]*FCW, part.y0, FCW, part.h, FX0 - FW/2, FY0 - FH + part.y0, FCW, part.h);
+}
+function drawLayer(now, part){
+  const p = Math.min(1, (now - part.t0)/part.dur);
+  if (p < 1) drawPart(part, part.prev, 1 - p);
+  drawPart(part, part.shown, p);
 }
 function drawFace(now, sx, sy){
   const k = canvas.width / LW;
@@ -351,10 +369,9 @@ function drawFace(now, sx, sy){
   if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
   ctx.globalAlpha = 1;
   ctx.drawImage(body, -FW/2, -FH, FW, FH);
-  // Yüz çizgileri arasında yumuşak geçiş
-  const p = Math.min(1, (now - fadeT0)/fadeDur);
-  if (p < 1) drawFeatures(prev, 1 - p);
-  drawFeatures(shown, p);
+  // Göz ve ağız çizgileri, her biri kendi yumuşak geçişiyle
+  drawLayer(now, eyes);
+  drawLayer(now, mouth);
   ctx.globalAlpha = 1;
 }
 
