@@ -240,9 +240,11 @@ const canvas = document.getElementById('face'), ctx = canvas.getContext('2d');
 const fx = document.getElementById('fx'), fctx = fx.getContext('2d');
 const faceWrap = document.getElementById('faceWrap'), bubble = document.getElementById('bubble');
 const warnEl = document.getElementById('warn');
-const sheet = new Image();
-sheet.src = 'limon_kareler.png';
-sheet.onerror = () => showWarn('limon_kareler.png bulunamadı. Bu dosya index.html ile aynı klasörde olmalı.');
+// Sabit gövde (gözsüz, ağızsız limon) + üstüne yalnızca yüz çizgileri
+const body = new Image(), faces = new Image();
+body.src = 'govde.png'; faces.src = 'yuzler.png';
+body.onerror = faces.onerror = () => showWarn('govde.png / yuzler.png bulunamadı. Bu dosyalar index.html ile aynı klasörde olmalı.');
+const FX0 = 100, FY0 = 185, FCW = 250, FCH = 150;   // yüz katmanının gövdedeki yeri
 
 /* ---------- Tuval boyutu (keskin görüntü için) ---------- */
 function resize(){
@@ -323,43 +325,36 @@ function frame(now){
   }
   if (blinkUntil && now >= blinkUntil){ blinkUntil = 0; show(base, 60); }
 
-  // yay fiziği
+  // Gövde sabit; yalnızca Limon'a dokununca kısa bir "jöle" sıkışması
   const k = 170, d = 11;
   squashV += (-k*squash - d*squashV) * dt; squash += squashV * dt;
-  tiltV   += (-120*tilt - 9*tiltV) * dt;   tilt   += tiltV * dt;
+  if (Math.abs(squash) < 0.0005 && Math.abs(squashV) < 0.01){ squash = 0; squashV = 0; }
+  const sy = 1 - squash, sx = 1 + squash*0.9;
 
-  const t = now/1000;
-  const m = reduceMotion ? 0.2 : 1;
-  let sy = 1 + 0.010*Math.sin(t*1.6)*m;                  // nefes
-  let rot = 0.014*Math.sin(t*0.7)*m;                      // hafif sallanma
-  if (talking){ sy += level*0.045*m; rot += level*0.025*Math.sin(t*8)*m; }
-  sy -= squash; let sx = 1 + squash*0.9 - (sy-1)*0.45;
-  rot += tilt;
-
-  drawFace(now, sx, sy, rot);
+  drawFace(now, sx, sy);
   drawFx(dt);
   requestAnimationFrame(frame);
 }
 
-function drawFrame(name, alpha){
+function drawFeatures(name, alpha){
   if (alpha <= 0) return;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(sheet, FRAME[name]*FW, 0, FW, FH, -FW/2, -FH, FW, FH);
+  ctx.drawImage(faces, FRAME[name]*FCW, 0, FCW, FCH, FX0 - FW/2, FY0 - FH, FCW, FCH);
 }
-function drawFace(now, sx, sy, rot){
+function drawFace(now, sx, sy){
   const k = canvas.width / LW;
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if (!sheet.complete || !sheet.naturalWidth) return;
+  if (!body.complete || !body.naturalWidth || !faces.complete || !faces.naturalWidth) return;
   ctx.setTransform(k,0,0,k,0,0);
-  ctx.translate(BASE_X, BASE_Y);
-  ctx.rotate(rot);
-  ctx.scale(sx, sy);
-  ctx.translate(0, 0);
-  // Gölge resmin içinde; görüntüyü alt kenardan hizalıyoruz
+  ctx.translate(BASE_X, BASE_Y);   // limonun yere bastığı nokta
+  if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
+  ctx.globalAlpha = 1;
+  ctx.drawImage(body, -FW/2, -FH, FW, FH);
+  // Yüz çizgileri arasında yumuşak geçiş
   const p = Math.min(1, (now - fadeT0)/fadeDur);
-  if (p < 1) drawFrame(prev, 1);
-  drawFrame(shown, p);
+  if (p < 1) drawFeatures(prev, 1 - p);
+  drawFeatures(shown, p);
   ctx.globalAlpha = 1;
 }
 
@@ -470,11 +465,10 @@ function hideWarn(){ warnEl.classList.remove('show'); }
 
 /* ---------- Konuş ---------- */
 let speakId = 0;
-function begin(m){ mode = m; clearTimeout(restTimer); poke(-0.05); }
+function begin(m){ mode = m; clearTimeout(restTimer); }
 function finish(id, endFace){
   if (id !== speakId) return;
   mode = 'idle'; setFace(endFace || 'gulumse');
-  if (endFace === 'neseli' || endFace === 'mutlu') { poke(0.10); wobble(0.6); }
   clearTimeout(restTimer);
   restTimer = setTimeout(() => setFace('sessiz'), 2600);
   hideBubbleSoon();
@@ -570,7 +564,7 @@ freeText.addEventListener('keydown', e => { if (e.key === 'Enter') sayFree(); })
 
 /* Limon'a dokunma: sıkış + kıkırda */
 faceWrap.addEventListener('pointerdown', () => {
-  poke(0.9); wobble((Math.random()-.5)*2.5);
+  poke(0.9);
   if (mode !== 'idle') return;
   sayFrom(DOKUNMA);
 });
